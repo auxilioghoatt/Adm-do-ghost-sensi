@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>GHOST MASTER - ADMIN PRO</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --primary: #ff1493; /* ROSA CHOQUE */
+            --bg: #050505; --card: #111111;
+            --border: #222; --red: #ff3333; --green: #00ff88; --yellow: #ffcc00;
+        }
+
+        body {
+            margin: 0; background: var(--bg); color: white;
+            font-family: 'Segoe UI', sans-serif;
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; overflow: hidden;
+        }
+
+        #master-panel {
+            width: 620px; height: 780px; 
+            background: var(--card); border: 2px solid var(--primary);
+            border-radius: 20px; display: flex; flex-direction: column;
+            padding: 20px; box-sizing: border-box;
+            box-shadow: 0 0 50px rgba(255, 20, 147, 0.4);
+        }
+
+        .header-top { text-align: center; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 15px; }
+        .header-top img { width: 70px; height: 70px; border-radius: 50%; border: 2px solid var(--primary); box-shadow: 0 0 15px var(--primary); }
+        .header-top h2 { margin: 5px 0; font-size: 16px; color: var(--primary); text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 10px var(--primary); }
+
+        .nav-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 15px; }
+        .nav-btn {
+            background: #000; border: 1px solid var(--border);
+            color: #666; padding: 12px 0; border-radius: 8px;
+            font-size: 11px; cursor: pointer; transition: 0.3s; text-align: center;
+        }
+        .nav-btn i { display: block; font-size: 18px; margin-bottom: 5px; }
+        .nav-btn.active { border-color: var(--primary); color: white; background: rgba(255, 20, 147, 0.15); box-shadow: inset 0 0 10px rgba(255, 20, 147, 0.2); }
+
+        .screen { display: none; height: 100%; animation: fadeIn 0.3s ease; flex-direction: column; }
+        .screen.active { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .sub-card { background: #000; border: 1px solid var(--border); border-radius: 12px; padding: 15px; margin-bottom: 10px; }
+        .sub-card h3 { font-size: 12px; margin: 0 0 10px 0; color: var(--primary); text-transform: uppercase; }
+
+        input, select {
+            width: 100%; padding: 12px; background: #080808;
+            border: 1px solid #333; color: white; border-radius: 8px;
+            font-size: 13px; margin-bottom: 10px; box-sizing: border-box; outline: none;
+        }
+        input:focus { border-color: var(--primary); }
+
+        .btn {
+            width: 100%; padding: 12px; border: none; border-radius: 8px;
+            font-weight: bold; cursor: pointer; font-size: 12px; text-transform: uppercase; transition: 0.3s;
+        }
+        .btn-purp { background: var(--primary); color: white; }
+        .btn-purp:hover { opacity: 0.8; box-shadow: 0 0 15px var(--primary); }
+        .btn-red { background: var(--red); color: white; }
+        .btn-dark { background: #222; color: #ccc; }
+
+        .scroll-list { overflow-y: auto; flex: 1; background: #000; border-radius: 10px; border: 1px solid #111; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        th { background: #0a0a0a; position: sticky; top: 0; padding: 12px; color: var(--primary); text-align: left; border-bottom: 1px solid var(--border); }
+        td { padding: 12px; border-bottom: 1px solid #111; }
+        .timer-val { color: var(--green); font-family: monospace; font-weight: bold; white-space: nowrap; }
+        .timer-warning { color: var(--red) !important; }
+
+        #edit-modal {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: #111; border: 2px solid var(--primary); padding: 20px;
+            border-radius: 15px; z-index: 100; width: 300px; display: none; box-shadow: 0 0 30px #000;
+        }
+    </style>
+</head>
+<body>
+
+<div id="edit-modal">
+    <h3 style="color:var(--primary); margin:0 0 10px 0;">GERENCIAR TEMPO</h3>
+    <input type="number" id="edit-amount" placeholder="Quantidade">
+    <select id="edit-unit">
+        <option value="D">DIAS</option>
+        <option value="H">HORAS</option>
+        <option value="M">MINUTOS</option>
+    </select>
+    <div style="display:flex; gap:5px;">
+        <button class="btn btn-purp" onclick="processTime('ADD')">ADICIONAR</button>
+        <button class="btn btn-red" onclick="processTime('SUB')">REMOVER</button>
+    </div>
+    <button class="btn btn-dark" style="margin-top:10px;" onclick="closeModal()">FECHAR</button>
+</div>
+
+<div id="master-panel">
+    <div class="header-top">
+        <img src="https://i.postimg.cc/3xwn5cYx/38782a39668670ff219c6b5eae09492f.jpg">
+        <h2>GHOST MASTER ADMIN</h2>
+    </div>
+
+    <div class="nav-grid">
+        <button class="nav-btn active" onclick="setTab(event, 'keys')"><i class="fas fa-plus-circle"></i>GERAR</button>
+        <button class="nav-btn" onclick="setTab(event, 'users')"><i class="fas fa-users"></i>CLIENTES</button>
+        <button class="nav-btn" onclick="setTab(event, 'remote')"><i class="fas fa-broadcast-tower"></i>AVISOS</button>
+        <button class="nav-btn" onclick="setTab(event, 'sec')"><i class="fas fa-fingerprint"></i>PROTEÇÃO</button>
+        <button class="nav-btn" onclick="setTab(event, 'db')"><i class="fas fa-server"></i>STATUS</button>
+        <button class="nav-btn" onclick="setTab(event, 'settings')"><i class="fas fa-cog"></i>PERFIL</button>
+    </div>
+
+    <div class="screen-container" style="flex:1; overflow:hidden;">
+        
+        <div id="keys" class="screen active">
+            <div class="sub-card">
+                <h3>Criar Novo Acesso</h3>
+                <input type="text" id="c-name" placeholder="NOME DO CLIENTE">
+                <div style="display:flex; gap:5px;">
+                    <input type="text" id="c-pass" placeholder="SENHA (OU GERE UMA)">
+                    <button class="btn btn-dark" style="width:100px; margin-bottom:10px;" onclick="randPass()">RANDOM</button>
+                </div>
+                <select id="c-time">
+                    <option value="0.25">TESTE (15 MINUTOS)</option>
+                    <option value="24">1 DIA</option>
+                    <option value="168">7 DIAS</option>
+                    <option value="360">15 DIAS</option>
+                    <option value="720">30 DIAS</option>
+                    <option value="PERMANENTE">VITALÍCIO</option>
+                </select>
+                <button class="btn btn-purp" onclick="preSave()">ATIVAR AGORA</button>
+            </div>
+
+            <div id="confirm-card" class="sub-card" style="display:none; border-color:var(--yellow);">
+                <h3 style="color:var(--yellow)">CONFERIR ATIVAÇÃO</h3>
+                <p id="confirm-info" style="font-size:12px; color:#ccc;"></p>
+                <div style="display:flex; gap:5px;">
+                    <button class="btn btn-purp" onclick="finalSave()">CONFIRMAR</button>
+                    <button class="btn btn-red" onclick="document.getElementById('confirm-card').style.display='none'">CANCELAR</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="users" class="screen">
+            <div class="scroll-list">
+                <table>
+                    <thead>
+                        <tr><th>CLIENTE</th><th>EXPIRAÇÃO</th><th>STATUS</th><th>AÇÕES</th></tr>
+                    </thead>
+                    <tbody id="user-list"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="remote" class="screen">
+            <div class="sub-card">
+                <h3>Mensagem Global</h3>
+                <input type="text" id="remote-msg" placeholder="Aviso que aparece no app...">
+                <button class="btn btn-purp" onclick="sendGlobalMsg()">PUBLICAR</button>
+            </div>
+            <button class="btn btn-red" onclick="nukeRemoto()">REMOVER TODOS OS AVISOS</button>
+        </div>
+        <div id="db" class="screen"><div class="sub-card"><h3>Total Clientes: <span id="key-count">0</span></h3></div></div>
+        <div id="sec" class="screen"></div>
+        <div id="settings" class="screen"></div>
+
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = { databaseURL: "https://painel-speed-a0c72-default-rtdb.firebaseio.com/" };
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    let tempUser = {};
+    let currentEditKey = "";
+    let activeIntervals = {};
+
+    function setTab(e, name) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(name).classList.add('active');
+        e.currentTarget.classList.add('active');
+        if(name === 'users') loadUsers();
+    }
+
+    // ALTERAÇÃO 1: Prefixo mudado para GHOST-
+    function randPass() { 
+        document.getElementById('c-pass').value = "GHOST-" + Math.random().toString(36).substring(2, 7).toUpperCase(); 
+    }
+
+    function preSave() {
+        const nome = document.getElementById('c-name').value;
+        const pass = document.getElementById('c-pass').value;
+        const tempo = document.getElementById('c-time').value;
+        if(!nome || !pass) return alert("Preencha Nome e Senha!");
+        let expiraVal = (tempo === "PERMANENTE") ? "VITALICIO" : Date.now() + (parseFloat(tempo) * 60 * 60 * 1000);
+        tempUser = { nome, pass, expiraVal };
+        document.getElementById('confirm-info').innerHTML = `<b>CLIENTE:</b> ${nome}<br><b>SENHA:</b> ${pass}<br><b>VALIDADE:</b> ${tempo === "PERMANENTE" ? "VITALÍCIO" : new Date(expiraVal).toLocaleString()}`;
+        document.getElementById('confirm-card').style.display = 'block';
+    }
+
+    function finalSave() {
+        database.ref('clientes/' + tempUser.pass).set({ 
+            nome: tempUser.nome, 
+            key: tempUser.pass,
+            expira: tempUser.expiraVal 
+        }).then(() => {
+            alert("✅ KEY ATIVADA!");
+            document.getElementById('confirm-card').style.display = 'none';
+            document.getElementById('c-name').value = ''; document.getElementById('c-pass').value = '';
+        });
+    }
+
+    function loadUsers() {
+        database.ref('clientes').on('value', (snap) => {
+            const list = document.getElementById('user-list');
+            list.innerHTML = "";
+            let count = 0;
+            // Limpar intervalos antigos ao recarregar a lista
+            Object.values(activeIntervals).forEach(clearInterval);
+            activeIntervals = {};
+
+            snap.forEach((item) => {
+                count++;
+                const val = item.val();
+                const key = item.key;
+                const isVit = val.expira === "VITALICIO";
+                const d = isVit ? "---" : new Date(val.expira);
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><b>${val.nome}</b><br><small style="color:#aaa">${key}</small></td>
+                    <td>${isVit ? "INFINITO" : d.toLocaleDateString() + ' ' + d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0')}</td>
+                    <td><span class="timer-val" id="t-${key.replace(/\W/g,'')}">${isVit ? "ATIVO" : "CONTANDO..."}</span></td>
+                    <td>
+                        <button class="btn-purp" style="padding:5px; font-size:9px;" onclick="openEdit('${key}')">EDITAR</button>
+                        <button class="btn-red" style="padding:5px; font-size:9px;" onclick="delUser('${key}')">BANIR</button>
+                    </td>
+                `;
+                list.appendChild(tr);
+                if(!isVit) startClock(val.expira, key);
+            });
+            document.getElementById('key-count').innerText = count;
+        });
+    }
+
+    // ALTERAÇÃO 2: Cronômetro corrigido para contar em tempo real
+    function startClock(target, key) {
+        const id = `t-${key.replace(/\W/g,'')}`;
+        
+        // Executa imediatamente a primeira vez
+        update();
+        
+        activeIntervals[key] = setInterval(update, 1000);
+
+        function update() {
+            const diff = target - Date.now();
+            const el = document.getElementById(id);
+            
+            if(!el) {
+                clearInterval(activeIntervals[key]);
+                return;
+            }
+
+            if(diff <= 0) {
+                clearInterval(activeIntervals[key]);
+                el.innerText = "EXPIRADO";
+                el.classList.add('timer-warning');
+                // Opcional: deletar do banco automaticamente
+                // database.ref('clientes/' + key).remove();
+                return;
+            }
+
+            const d = Math.floor(diff / 86400000);
+            const h = Math.floor((diff % 86400000) / 3600000);
+            const m = Math.floor((diff % 3600000) / 60000);
+            const s = Math.floor((diff % 60000) / 1000);
+
+            let timeStr = "";
+            if(d > 0) timeStr += d + "d ";
+            timeStr += `${h.toString().padStart(2,'0')}h ${m.toString().padStart(2,'0')}m ${s.toString().padStart(2,'0')}s`;
+            
+            el.innerText = timeStr;
+            if(diff < 3600000) el.classList.add('timer-warning'); // Vermelho se faltar menos de 1 hora
+        }
+    }
+
+    function openEdit(key) { currentEditKey = key; document.getElementById('edit-modal').style.display = 'block'; }
+    function closeModal() { document.getElementById('edit-modal').style.display = 'none'; }
+    function delUser(k) { if(confirm("BANIR ESTE CLIENTE?")) database.ref('clientes/'+k).remove(); }
+    function sendGlobalMsg() {
+        const msg = document.getElementById('remote-msg').value;
+        if(msg) database.ref('config/aviso').set(msg).then(() => alert("Aviso publicado!"));
+    }
+    function nukeRemoto() { database.ref('config/aviso').remove(); }
+</script>
+</body>
+</html>
